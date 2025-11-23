@@ -14,7 +14,7 @@ rpc_public_addr = "localhost:3901"
 [s3_api]
 s3_region = "garage"
 api_bind_addr = "[::]:3900"
-root_domain = ".s3.garage"
+root_domain = ".s3.127.0.0.1.traefik.me"
 
 [s3_web]
 bind_addr = "[::]:3902"
