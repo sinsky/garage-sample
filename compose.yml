@@ -1,0 +1,65 @@
+services:
+  traefik:
+    image: traefik:v3.6
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - 80:80
+    volumes:
+      - ./traefik.yml:/etc/traefik/traefik.yml
+    environment:
+      TZ: Asia/Tokyo
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy
+    restart: unless-stopped
+    container_name: readonly-socket
+    environment:
+      CONTAINERS: 1
+      NETWORKS: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+  garage:
+    image: dxflrs/garage:v2.1.0
+    container_name: garage
+    restart: always
+    # 全部使わない
+    # ports:
+      # - 3900:3900
+      # - 3901:3901
+      # - 3902:3902
+      # - 3903:3903
+    expose:
+      - 3900
+      - 3902
+      - 3903
+    volumes:
+      - ./garage.toml:/etc/garage.toml
+      - ./meta:/var/lib/garage/meta
+      - ./data:/var/lib/garage/data
+    labels:
+      traefik.enable: true
+
+      traefik.http.services.garage-s3.loadbalancer.server.port: 3900
+      traefik.http.routers.garage-s3.rule: Host(`s3.127.0.0.1.traefik.me`) || HostRegexp(`^.+\.s3\.127\.0\.0\.1\.traefik\.me$`)
+      traefik.http.routers.garage-s3.service: garage-s3
+
+      traefik.http.services.garage-web.loadbalancer.server.port: 3902
+      traefik.http.routers.garage-web.rule: HostRegexp(`^.+\.web\.127\.0\.0\.1\.traefik\.me$`)
+      traefik.http.routers.garage-web.service: garage-web
+  webui:
+    image: khairul169/garage-webui
+    container_name: garage-webui
+    restart: unless-stopped
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+    # ports:
+    #   - 3909:3909
+    expose:
+      - 3909
+    environment:
+      API_BASE_URL: http://garage:3903
+      S3_ENDPOINT_URL: http://garage:3900
+    labels:
+      traefik.enable: true
+      traefik.http.services.garage-webui.loadbalancer.server.port: 3909
+      traefik.http.routers.garage-webui.rule: Host(`webui.127.0.0.1.traefik.me`)
